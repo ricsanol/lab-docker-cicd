@@ -1,0 +1,25 @@
+# Não envia o ambiente virtual do Windows para o Docker.
+# O container instalará seu próprio ambiente Linux.
+.venv/
+
+# Não envia o repositório e o histórico do Git.
+.git/
+
+# Não envia configurações locais do VS Code.
+.vscode/
+
+# Não envia caches gerados pelo Python.
+__pycache__/
+*.pyc
+*.pyo
+
+# Não envia caches e relatórios dos testes.
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Não envia segredos e variáveis locais.
+.env
+
+# Os testes não são necessários na imagem que executará a API.
+tests/
