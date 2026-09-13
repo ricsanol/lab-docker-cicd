@@ -42,7 +42,11 @@ jobs:
       # Baixa o código do repositório para a máquina temporária.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
-
+      
+      # Verifica se o arquivo compose.yml possui uma configuração válida.
+      - name: Validar Docker Compose
+        run: docker compose config --quiet
+        
       # Instala e configura o Python 3.13.
       - name: Configurar Python
         uses: actions/setup-python@v7
@@ -91,6 +95,8 @@ jobs:
       # Baixa novamente o código para esta segunda máquina.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
+
+      
 
       # Autentica o Docker no registro de imagens do GitHub.
       - name: Autenticar no GitHub Container Registry
