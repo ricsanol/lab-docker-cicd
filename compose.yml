@@ -1,12 +1,9 @@
 # Define os serviços que fazem parte da aplicação.
 services:
-
   # "api" é o nome interno escolhido para o nosso serviço.
   api:
-
     # Determina como a imagem será construída.
     build:
-
       # Usa a raiz do projeto como contexto da construção.
       context: .
 
@@ -21,11 +18,32 @@ services:
 
     # Faz o mapeamento das portas.
     ports:
-
       # Porta 8002 do Windows direcionada à porta 8000 do container.
       - "8002:8000"
 
     # Reinicia automaticamente o container quando ele parar por falha
     # ou quando o Docker Desktop for reiniciado.
-    restart: unless-stopped
-    
+    restart:
+      unless-stopped
+      # Verifica periodicamente se a API realmente está respondendo.
+    healthcheck:
+      # Executa uma requisição para o endpoint /health
+      # usando somente recursos da biblioteca padrão do Python.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+      # Executa a verificação a cada trinta segundos.
+      interval: 30s
+
+      # Considera falha se a resposta demorar mais de cinco segundos.
+      timeout: 5s
+
+      # Marca como unhealthy após três falhas consecutivas.
+      retries: 3
+
+      # Aguarda dez segundos após iniciar antes de contabilizar falhas.
+      start_period: 10s
+      
