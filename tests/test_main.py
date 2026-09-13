@@ -1,44 +1,53 @@
-# Importa o TestClient fornecido pelo FastAPI.
-# Ele permite simular requisições HTTP sem precisar abrir o navegador
-# e sem precisar iniciar manualmente o servidor Uvicorn.
+# Importa o cliente de testes fornecido pelo FastAPI.
 from fastapi.testclient import TestClient
 
-# Importa a aplicação FastAPI que criamos no arquivo app/main.py.
+# Importa a aplicação que será testada.
 from app.main import app
 
 
-# Cria um cliente de teste conectado à nossa aplicação.
-# A variável client poderá executar requisições GET, POST e outros métodos.
+# Cria um cliente que consegue fazer requisições para a API
+# sem precisar iniciar o servidor Uvicorn.
 client = TestClient(app)
 
 
-# Toda função de teste deve começar com "test_".
-# Dessa forma, o pytest consegue localizar e executar automaticamente o teste.
+# Testa o endpoint principal da aplicação.
 def test_home() -> None:
-    # Simula uma requisição HTTP GET para a rota principal "/".
+    # Simula uma requisição HTTP GET para "/".
     response = client.get("/")
 
-    # Verifica se o código HTTP retornado foi 200.
-    # O código 200 significa que a requisição foi processada com sucesso.
+    # Confirma que a API respondeu com HTTP 200.
     assert response.status_code == 200
 
-    # Converte a resposta JSON para um dicionário Python
-    # e verifica se o conteúdo retornado é exatamente o esperado.
+    # Confirma que o conteúdo retornado está correto.
     assert response.json() == {
         "status": "online",
         "message": "Laboratório Docker e CI/CD",
     }
 
 
-# Cria um segundo teste para verificar a rota de saúde.
+# Testa o endpoint de verificação de saúde.
 def test_health() -> None:
     # Simula uma requisição HTTP GET para "/health".
     response = client.get("/health")
 
-    # Confirma que a API respondeu com sucesso.
+    # Confirma que a API respondeu com HTTP 200.
     assert response.status_code == 200
 
-    # Confirma que o conteúdo JSON possui o status esperado.
+    # Confirma que a aplicação informou estar saudável.
     assert response.json() == {
         "status": "healthy",
+    }
+
+
+# Testa o endpoint que informa a versão da aplicação.
+def test_version() -> None:
+    # Simula uma requisição HTTP GET para "/version".
+    response = client.get("/version")
+
+    # Confirma que a API respondeu com HTTP 200.
+    assert response.status_code == 200
+
+    # Confirma que a versão retornada é exatamente 1.1.0.
+    assert response.json() == {
+        "version": "1.1.0",
     }

@@ -2,15 +2,13 @@
 # Essa classe será usada para criar a nossa aplicação web/API.
 from fastapi import FastAPI
 
-
 # Cria a aplicação FastAPI.
 # A variável "app" representa nossa API.
 app = FastAPI(
     # Define o nome que aparecerá na documentação automática.
     title="Laboratório Docker e CI/CD",
-
     # Define a versão atual da nossa API.
-    version="1.0.0",
+    version="1.1.0",
 )
 
 
@@ -35,7 +33,6 @@ def home() -> dict[str, str]:
     return {
         # Informa que a aplicação está online.
         "status": "online",
-
         # Mensagem apresentada para quem acessar a API.
         "message": "Laboratório Docker e CI/CD",
     }
@@ -61,3 +58,12 @@ def health() -> dict[str, str]:
         # "healthy" indica que a aplicação está saudável.
         "status": "healthy",
     }
+
+
+# O decorador informa que esta função responderá a requisições
+# HTTP GET feitas no endereço /version.
+@app.get("/version")
+def version() -> dict[str, str]:
+    # Retorna a versão atual da aplicação em formato JSON.
+    # Esse tipo de endpoint ajuda a identificar qual versão está executando.
+    return {"version": "1.1.0"}
