@@ -62,7 +62,8 @@ jobs:
           cache: pip
 
       # Instala as dependências registradas no requirements.txt.
-      -. apply_patch was used to modify code without being invoked. The terminal should be used instead.- name: Instalar dependências
+      -. apply_patch was used to modify code without being invoked. The terminal should be used instead.
+      - name: Instalar dependências
         run: python -m pip install -r requirements.txt
 
       # Executa os testes automatizados com informações detalhadas.
@@ -73,4 +74,3 @@ jobs:
       # Se o Dockerfile estiver inválido, a CI será reprovada.
       - name: Construir imagem Docker
         run: docker build --tag lab-docker-cicd:ci .
-        
