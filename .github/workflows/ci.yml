@@ -1,76 +1,57 @@
-# Define o nome que aparecerá na aba Actions do GitHub.
+# Nome apresentado na aba Actions do GitHub.
 name: CI - Testes e Docker
 
-
-# Define os acontecimentos que iniciam automaticamente a CI.
+# Eventos que iniciam automaticamente a CI.
 on:
-
-  # Executa a CI quando houver envio de código para o GitHub.
+  # Executa quando um código é enviado para a branch main.
   push:
-
-    # Limita a a execução aos pushes realizados na branch main.
     branches:
       - main
 
-  # Também executa a CI quando um Pull Request
-  # tiver a branch main como destino.
+  # Executa quando um Pull Request tem a main como destino.
   pull_request:
     branches:
       - main
 
-
-# Concede ao processo apenas permissão de leitura do repositório.
-# Essa é uma configuração de segurança.
+# Permissão mínima necessária para baixar o código.
 permissions:
   contents: read
 
-
-# Define os trabalhos que serão executados pela CI.
+# Trabalhos executados pela CI.
 jobs:
-
-  # Nome interno do nosso trabalho.
+  # Identificador interno do trabalho.
   validar-aplicacao:
-
-    # Nome apresentado visualmente no GitHub.
+    # Nome exibido na interface do GitHub.
     name: Testar aplicação e construir Docker
 
-    # Define um limite de dez minutos para o trabalho.
-    # Isso evita deixar uma execução presa indefinidamente.
+    # Interrompe o trabalho se ultrapassar dez minutos.
     timeout-minutes: 10
 
-    # Solicita ao GitHub uma máquina virtual Linux.
+    # Cria uma máquina virtual Linux temporária.
     runs-on: ubuntu-latest
 
-    # Lista ordenada das etapas executadas nessa máquina.
+    # Etapas executadas em ordem.
     steps:
-
-      # Baixa o conteúdo do nosso repositório
-      # para dentro da máquina temporária do GitHub.
+      # Baixa o código do repositório para a máquina temporária.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
 
-      # Instala e configura o Python 3.13.
+      # Instala e configura o Python.
       - name: Configurar Python
         uses: actions/setup-python@v7
         with:
-
-          # Escolhe a mesma versão principal usada no laboratório.
           python-version: "3.13"
-
-          # Armazena dependências entre execuções
-          # para acelerar as próximas instalações.
           cache: pip
 
-      # Instala as dependências registradas no requirements.txt.
-      -. apply_patch was used to modify code without being invoked. The terminal should be used instead.
+      # Instala as bibliotecas do requirements.txt.
       - name: Instalar dependências
         run: python -m pip install -r requirements.txt
 
-      # Executa os testes automatizados com informações detalhadas.
+      # Executa os testes automatizados.
       - name: Executar testes
         run: python -m pytest -v
 
-      # Tenta construir a imagem utilizando nosso Dockerfile.
-      # Se o Dockerfile estiver inválido, a CI será reprovada.
+      # Verifica se o Dockerfile consegue construir a imagem.
       - name: Construir imagem Docker
         run: docker build --tag lab-docker-cicd:ci .
+        
