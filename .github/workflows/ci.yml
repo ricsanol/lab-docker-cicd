@@ -1,57 +1,117 @@
-# Nome apresentado na aba Actions do GitHub.
-name: CI - Testes e Docker
+# Nome do workflow apresentado na aba Actions.
+name: CI/CD - Testes e Docker
 
-# Eventos que iniciam automaticamente a CI.
+# Define os acontecimentos que iniciam o workflow.
 on:
-  # Executa quando um código é enviado para a branch main.
+  # Executa quando enviamos código para a branch main.
   push:
     branches:
       - main
 
-  # Executa quando um Pull Request tem a main como destino.
+  # Também executa quando criamos um Pull Request para a main.
   pull_request:
     branches:
       - main
 
-# Permissão mínima necessária para baixar o código.
+# Permissões concedidas ao GitHub Actions.
 permissions:
+  # Permite que o workflow leia o código do repositório.
   contents: read
 
-# Trabalhos executados pela CI.
+  # Permite publicar imagens no GitHub Container Registry.
+  packages: write
+
+# Trabalhos que serão executados pelo GitHub Actions.
 jobs:
-  # Identificador interno do trabalho.
+
+  # Primeiro trabalho: testa e valida a aplicação.
   validar-aplicacao:
-    # Nome exibido na interface do GitHub.
+
+    # Nome apresentado na interface do GitHub.
     name: Testar aplicação e construir Docker
 
-    # Interrompe o trabalho se ultrapassar dez minutos.
-    timeout-minutes: 10
-
-    # Cria uma máquina virtual Linux temporária.
+    # Utiliza uma máquina virtual Linux temporária.
     runs-on: ubuntu-latest
 
-    # Etapas executadas em ordem.
+    # Cancela o trabalho caso ultrapasse dez minutos.
+    timeout-minutes: 10
+
+    # Etapas executadas em sequência.
     steps:
+
       # Baixa o código do repositório para a máquina temporária.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
 
-      # Instala e configura o Python.
+      # Instala e configura o Python 3.13.
       - name: Configurar Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
 
-      # Instala as bibliotecas do requirements.txt.
+      # Instala as bibliotecas registradas no requirements.txt.
       - name: Instalar dependências
         run: python -m pip install -r requirements.txt
 
-      # Executa os testes automatizados.
+      # Executa os testes automatizados do projeto.
       - name: Executar testes
         run: python -m pytest -v
 
       # Verifica se o Dockerfile consegue construir a imagem.
       - name: Construir imagem Docker
         run: docker build --tag lab-docker-cicd:ci .
-        
+
+  # Segundo trabalho: publica a imagem Docker no GitHub.
+  publicar-imagem:
+
+    # Nome apresentado na interface do GitHub.
+    name: Publicar imagem no GHCR
+
+    # Só começa depois que validar-aplicacao terminar com sucesso.
+    needs: validar-aplicacao
+
+    # Publica somente em push na main.
+    # Pull Requests serão testados, mas não publicarão imagens.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    # Utiliza outra máquina Linux temporária.
+    runs-on: ubuntu-latest
+
+    # Cancela o trabalho caso ultrapasse dez minutos.
+    timeout-minutes: 10
+
+    # Nome completo que a imagem terá no registro do GitHub.
+    env:
+      IMAGE_NAME: ghcr.io/ricsanol/lab-docker-cicd
+
+    # Etapas da publicação.
+    steps:
+
+      # Baixa novamente o código para esta segunda máquina.
+      - name: Baixar código do repositório
+        uses: actions/checkout@v7
+
+      # Autentica o Docker no registro de imagens do GitHub.
+      - name: Autenticar no GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" |
+          docker login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      # Constrói a imagem com duas identificações.
+      # latest representa a versão mais recente.
+      # github.sha identifica exatamente o commit que gerou a imagem.
+      - name: Construir imagem para publicação
+        run: |
+          docker build \
+            --tag "${IMAGE_NAME}:latest" \
+            --tag "${IMAGE_NAME}:${{ github.sha }}" \
+            .
+
+      # Envia as duas identificações da imagem ao registro.
+      - name: Publicar imagem Docker
+        run: |
+          docker push "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:${{ github.sha }}"
