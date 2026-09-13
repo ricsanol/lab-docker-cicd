@@ -1,0 +1,31 @@
+# Define os serviços que fazem parte da aplicação.
+services:
+
+  # "api" é o nome interno escolhido para o nosso serviço.
+  api:
+
+    # Determina como a imagem será construída.
+    build:
+
+      # Usa a raiz do projeto como contexto da construção.
+      context: .
+
+      # Informa qual arquivo contém as instruções do build.
+      dockerfile: Dockerfile
+
+    # Define o nome e a tag da imagem construída pelo Compose.
+    image: lab-docker-cicd:compose
+
+    # Define um nome fácil de identificar para o container.
+    container_name: lab-api-compose
+
+    # Faz o mapeamento das portas.
+    ports:
+
+      # Porta 8002 do Windows direcionada à porta 8000 do container.
+      - "8002:8000"
+
+    # Reinicia automaticamente o container quando ele parar por falha
+    # ou quando o Docker Desktop for reiniciado.
+    restart: unless-stopped
+    
