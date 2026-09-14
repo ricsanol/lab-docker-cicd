@@ -91,3 +91,73 @@ def test_list_studies() -> None:
     assert len(response_data) == 1
     assert response_data[0]["title"] == "Persistência"
     assert response_data[0]["description"] == ("Dados armazenados em volume Docker")
+
+    # Testa a consulta de um registro específico.
+
+
+def test_get_study() -> None:
+    clear_studies()
+
+    create_response = client.post(
+        "/studies",
+        json={
+            "title": "PostgreSQL",
+            "description": "Banco de dados do laboratório",
+        },
+    )
+
+    study_id = create_response.json()["id"]
+
+    response = client.get(f"/studies/{study_id}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == study_id
+    assert response.json()["title"] == "PostgreSQL"
+
+
+# Testa a consulta de um identificador inexistente.
+def test_get_study_not_found() -> None:
+    clear_studies()
+
+    response = client.get("/studies/999999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Registro de estudo não encontrado.",
+    }
+
+
+# Testa a exclusão de um registro.
+def test_delete_study() -> None:
+    clear_studies()
+
+    create_response = client.post(
+        "/studies",
+        json={
+            "title": "Docker",
+            "description": "Registro que será excluído",
+        },
+    )
+
+    study_id = create_response.json()["id"]
+
+    delete_response = client.delete(f"/studies/{study_id}")
+
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
+
+    get_response = client.get(f"/studies/{study_id}")
+
+    assert get_response.status_code == 404
+
+
+# Testa a exclusão de um identificador inexistente.
+def test_delete_study_not_found() -> None:
+    clear_studies()
+
+    response = client.delete("/studies/999999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Registro de estudo não encontrado.",
+    }

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 # Importa os recursos utilizados para criar a API.
-from fastapi import Depends, FastAPI, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 
 # Importa o recurso usado para construir consultas SQL.
 from sqlalchemy import select
@@ -127,3 +127,54 @@ def list_studies(
 
     # Converte os objetos SQLAlchemy para respostas da API.
     return [StudyResponse.model_validate(study) for study in studies]
+
+
+# Consulta um registro específico pelo identificador.
+@app.get(
+    "/studies/{study_id}",
+    response_model=StudyResponse,
+)
+def get_study(
+    study_id: int,
+    session: DatabaseSession,
+) -> StudyResponse:
+    # Procura o registro pela chave primária.
+    study = session.get(Study, study_id)
+
+    # Retorna HTTP 404 quando o registro não existe.
+    if study is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registro de estudo não encontrado.",
+        )
+
+    return StudyResponse.model_validate(study)
+
+
+# Exclui um registro específico.
+@app.delete(
+    "/studies/{study_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_study(
+    study_id: int,
+    session: DatabaseSession,
+) -> Response:
+    # Procura o registro pela chave primária.
+    study = session.get(Study, study_id)
+
+    # Retorna HTTP 404 quando o registro não existe.
+    if study is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registro de estudo não encontrado.",
+        )
+
+    # Marca o registro para exclusão.
+    session.delete(study)
+
+    # Confirma a exclusão no PostgreSQL.
+    session.commit()
+
+    # HTTP 204 indica sucesso sem conteúdo na resposta.
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
