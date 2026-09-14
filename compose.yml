@@ -92,6 +92,30 @@ services:
 
     # Reinicia o banco após falhas ou reinício do Docker Desktop.
     restart: unless-stopped
+  # Serviço responsável pela interface visual.
+  dashboard:
+    # Constrói a imagem utilizando os arquivos da pasta dashboard.
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+
+    # Nome e tag da imagem local.
+    image: lab-docker-cicd-dashboard:compose
+
+    # Nome utilizado para identificar o container.
+    container_name: lab-dashboard-compose
+
+    # Aguarda a API ficar saudável antes de iniciar.
+    depends_on:
+      api:
+        condition: service_healthy
+
+    # Porta 8080 do Windows direcionada à porta 80 do Nginx.
+    ports:
+      - "8080:80"
+
+    # Reinicia após falhas ou reinício do Docker Desktop.
+    restart: unless-stopped
 
 # Declara os volumes administrados pelo Docker Compose.
 volumes:
