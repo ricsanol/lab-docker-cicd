@@ -73,7 +73,33 @@ jobs:
 
       # Solicita ao Nginx que valide sua configuração.
       - name: Validar configuração do Nginx
-        run: docker run --rm lab-docker-cicd-dashboard:ci nginx -t
+        run:
+          docker run --rm lab-docker-cicd-dashboard:ci nginx -t
+
+          # Inicia PostgreSQL, API e dashboard.
+      # A opção --wait aguarda os healthchecks ficarem saudáveis.
+      - name: Iniciar aplicação integrada
+        run: |
+          docker compose up \
+            --detach \
+            --build \
+            --wait \
+            --wait-timeout 120
+
+      # Executa o fluxo Nginx, FastAPI e PostgreSQL.
+      - name: Executar teste integrado
+        run: python scripts/integration_check.py
+
+      # Apresenta os logs caso alguma etapa anterior falhe.
+      - name: Exibir logs dos containers
+        if: failure()
+        run: docker compose logs --no-color
+
+      # Remove os recursos criados na máquina temporária.
+      # Esta etapa executa mesmo quando ocorrer uma falha.
+      - name: Encerrar ambiente integrado
+        if: always()
+        run: docker compose down --volumes
 
   # Segundo trabalho: publica a imagem da API.
   publicar-imagem:
