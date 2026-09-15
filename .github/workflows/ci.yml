@@ -73,8 +73,11 @@ jobs:
 
       # Solicita ao Nginx que valide sua configuração.
       - name: Validar configuração do Nginx
-        run:
-          docker run --rm lab-docker-cicd-dashboard:ci nginx -t
+        run: >
+          docker run --rm
+          --add-host api:127.0.0.1
+          lab-docker-cicd-dashboard:ci
+          nginx -t
 
           # Inicia PostgreSQL, API e dashboard.
       # A opção --wait aguarda os healthchecks ficarem saudáveis.
