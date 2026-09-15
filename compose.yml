@@ -1,34 +1,41 @@
 # Define os serviços que fazem parte da aplicação.
 services:
-  # "api" é o nome interno escolhido para o nosso serviço.
+  # Serviço responsável pela API FastAPI.
   api:
-    # Determina como a imagem será construída.
+    # Determina como a imagem da API será construída.
     build:
       # Usa a raiz do projeto como contexto da construção.
       context: .
 
-      # Informa qual arquivo contém as instruções do build.
+      # Arquivo que contém as instruções de construção.
       dockerfile: Dockerfile
 
-    # Define o nome e a tag da imagem construída pelo Compose.
+    # Nome e tag da imagem construída pelo Compose.
     image: lab-docker-cicd:compose
 
-    # Define um nome fácil de identificar para o container.
+    # Nome utilizado para identificar o container da API.
     container_name: lab-api-compose
 
-    # Faz o mapeamento das portas.
+    # Disponibiliza a variável de conexão dentro do container.
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+
+    # A API somente será iniciada depois que o PostgreSQL
+    # estiver aceitando conexões.
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Porta 8002 do Windows direcionada à porta 8000 do container.
     ports:
-      # Porta 8002 do Windows direcionada à porta 8000 do container.
       - "8002:8000"
 
-    # Reinicia automaticamente o container quando ele parar por falha
-    # ou quando o Docker Desktop for reiniciado.
-    restart:
-      unless-stopped
-      # Verifica periodicamente se a API realmente está respondendo.
+    # Reinicia o container após falhas ou reinício do Docker Desktop.
+    restart: unless-stopped
+
+    # Verifica periodicamente se a API está respondendo.
     healthcheck:
-      # Executa uma requisição para o endpoint /health
-      # usando somente recursos da biblioteca padrão do Python.
+      # Executa uma requisição para o endpoint /health.
       test:
         - CMD
         - python
@@ -38,12 +45,79 @@ services:
       # Executa a verificação a cada trinta segundos.
       interval: 30s
 
-      # Considera falha se a resposta demorar mais de cinco segundos.
+      # Cada tentativa poderá durar no máximo cinco segundos.
       timeout: 5s
 
-      # Marca como unhealthy após três falhas consecutivas.
+      # Marca a API como unhealthy após três falhas consecutivas.
       retries: 3
 
-      # Aguarda dez segundos após iniciar antes de contabilizar falhas.
+      # Aguarda dez segundos antes de contabilizar falhas.
       start_period: 10s
-      
+
+  # Serviço responsável pelo banco de dados PostgreSQL.
+  db:
+    # Utiliza uma imagem oficial e compacta do PostgreSQL.
+    image: postgres:17-alpine
+
+    # Nome utilizado para identificar o container do banco.
+    container_name: lab-db-compose
+
+    # Configura o PostgreSQL com os valores existentes no arquivo .env.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    # Armazena os dados fora da camada interna do container.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Verifica se o PostgreSQL está aceitando conexões.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+
+      # Executa a verificação a cada dez segundos.
+      interval: 10s
+
+      # Cada tentativa poderá durar no máximo cinco segundos.
+      timeout: 5s
+
+      # Marca o banco como unhealthy após cinco falhas consecutivas.
+      retries: 5
+
+      # Aguarda dez segundos antes de contabilizar falhas.
+      start_period: 10s
+
+    # Reinicia o banco após falhas ou reinício do Docker Desktop.
+    restart: unless-stopped
+  # Serviço responsável pela interface visual.
+  dashboard:
+    # Constrói a imagem utilizando os arquivos da pasta dashboard.
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+
+    # Nome e tag da imagem local.
+    image: lab-docker-cicd-dashboard:compose
+
+    # Nome utilizado para identificar o container.
+    container_name: lab-dashboard-compose
+
+    # Aguarda a API ficar saudável antes de iniciar.
+    depends_on:
+      api:
+        condition: service_healthy
+
+    # Porta 8080 do Windows direcionada à porta 80 do Nginx.
+    ports:
+      - "8080:80"
+
+    # Reinicia após falhas ou reinício do Docker Desktop.
+    restart: unless-stopped
+
+# Declara os volumes administrados pelo Docker Compose.
+volumes:
+  # Volume que preservará os dados do PostgreSQL.
+  postgres_data:

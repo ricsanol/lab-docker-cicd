@@ -47,7 +47,7 @@ def test_version() -> None:
     # Confirma que a API respondeu com HTTP 200.
     assert response.status_code == 200
 
-    # Confirma que a versão retornada é exatamente 1.1.0.
+    # Confirma que a versão retornada é exatamente 1.2.0.
     assert response.json() == {
-        "version": "1.1.0",
+        "version": "1.2.0",
     }

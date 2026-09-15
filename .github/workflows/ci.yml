@@ -1,102 +1,132 @@
-# Nome do workflow apresentado na aba Actions.
-name: CI/CD - Testes e Docker
+# Nome apresentado na aba Actions do GitHub.
+name: CI/CD - API, PostgreSQL e Dashboard
 
-# Define os acontecimentos que iniciam o workflow.
+# Acontecimentos que iniciam o workflow.
 on:
-  # Executa quando enviamos código para a branch main.
+  # Executa depois que um código entra na main.
   push:
     branches:
       - main
 
-  # Também executa quando criamos um Pull Request para a main.
+  # Executa para validar Pull Requests destinados à main.
   pull_request:
     branches:
       - main
 
-# Permissões concedidas ao GitHub Actions.
+# Permissões concedidas ao workflow.
 permissions:
-  # Permite que o workflow leia o código do repositório.
+  # Permite baixar o código do repositório.
   contents: read
 
   # Permite publicar imagens no GitHub Container Registry.
   packages: write
 
-# Trabalhos que serão executados pelo GitHub Actions.
 jobs:
-
-  # Primeiro trabalho: testa e valida a aplicação.
+  # Primeiro trabalho: testa e constrói toda a aplicação.
   validar-aplicacao:
+    name: Testar e construir aplicação
 
-    # Nome apresentado na interface do GitHub.
-    name: Testar aplicação e construir Docker
-
-    # Utiliza uma máquina virtual Linux temporária.
+    # Máquina Linux temporária fornecida pelo GitHub.
     runs-on: ubuntu-latest
 
-    # Cancela o trabalho caso ultrapasse dez minutos.
-    timeout-minutes: 10
+    # Interrompe o trabalho se ultrapassar quinze minutos.
+    timeout-minutes: 15
 
-    # Etapas executadas em sequência.
+    # Valores utilizados somente no ambiente temporário da CI.
+    env:
+      POSTGRES_DB: labdb
+      POSTGRES_USER: labuser
+      POSTGRES_PASSWORD: lab_ci_password
+      DATABASE_URL: postgresql+psycopg://labuser:lab_ci_password@db:5432/labdb
+
     steps:
-
-      # Baixa o código do repositório para a máquina temporária.
+      # Baixa o código do commit que está sendo validado.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
-      
-      # Verifica se o arquivo compose.yml possui uma configuração válida.
+
+      # Verifica a estrutura completa do compose.yml.
       - name: Validar Docker Compose
         run: docker compose config --quiet
-        
-      # Instala e configura o Python 3.13.
+
+      # Instala e configura o Python utilizado nos testes.
       - name: Configurar Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
 
-      # Instala as bibliotecas registradas no requirements.txt.
+      # Instala as dependências registradas no projeto.
       - name: Instalar dependências
         run: python -m pip install -r requirements.txt
 
-      # Executa os testes automatizados do projeto.
+      # Executa todos os testes automatizados.
       - name: Executar testes
         run: python -m pytest -v
 
-      # Verifica se o Dockerfile consegue construir a imagem.
-      - name: Construir imagem Docker
+      # Constrói a imagem da API.
+      - name: Construir imagem da API
         run: docker build --tag lab-docker-cicd:ci .
 
-  # Segundo trabalho: publica a imagem Docker no GitHub.
-  publicar-imagem:
+      # Constrói a imagem do dashboard.
+      - name: Construir imagem do dashboard
+        run: docker build --tag lab-docker-cicd-dashboard:ci ./dashboard
 
-    # Nome apresentado na interface do GitHub.
-    name: Publicar imagem no GHCR
+      # Solicita ao Nginx que valide sua configuração.
+      - name: Validar configuração do Nginx
+        run: >
+          docker run --rm
+          --add-host api:127.0.0.1
+          lab-docker-cicd-dashboard:ci
+          nginx -t
 
-    # Só começa depois que validar-aplicacao terminar com sucesso.
+          # Inicia PostgreSQL, API e dashboard.
+      # A opção --wait aguarda os healthchecks ficarem saudáveis.
+      - name: Iniciar aplicação integrada
+        run: |
+          docker compose up \
+            --detach \
+            --build \
+            --wait \
+            --wait-timeout 120
+
+      # Executa o fluxo Nginx, FastAPI e PostgreSQL.
+      - name: Executar teste integrado
+        run: python scripts/integration_check.py
+
+      # Apresenta os logs caso alguma etapa anterior falhe.
+      - name: Exibir logs dos containers
+        if: failure()
+        run: docker compose logs --no-color
+
+      # Remove os recursos criados na máquina temporária.
+      # Esta etapa executa mesmo quando ocorrer uma falha.
+      - name: Encerrar ambiente integrado
+        if: always()
+        run: docker compose down --volumes
+
+    # Segundo trabalho: publica as imagens da API e do dashboard.
+  publicar-imagens:
+    name: Publicar imagens no GHCR
+
+    # Somente começa depois que todas as validações terminarem.
     needs: validar-aplicacao
 
-    # Publica somente em push na main.
-    # Pull Requests serão testados, mas não publicarão imagens.
+    # Executa somente depois de um push na main.
+    # Pull Requests são testados, mas não publicam imagens.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    # Utiliza outra máquina Linux temporária.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
-    # Cancela o trabalho caso ultrapasse dez minutos.
-    timeout-minutes: 10
-
-    # Nome completo que a imagem terá no registro do GitHub.
+    # Endereços das imagens no GitHub Container Registry.
     env:
-      IMAGE_NAME: ghcr.io/ricsanol/lab-docker-cicd
+      API_IMAGE: ghcr.io/ricsanol/lab-docker-cicd
+      DASHBOARD_IMAGE: ghcr.io/ricsanol/lab-docker-cicd-dashboard
 
-    # Etapas da publicação.
     steps:
-
-      # Baixa novamente o código para esta segunda máquina.
+      # Baixa novamente o código para esta máquina.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
-
-      
 
       # Autentica o Docker no registro de imagens do GitHub.
       - name: Autenticar no GitHub Container Registry
@@ -106,18 +136,30 @@ jobs:
             --username "${{ github.actor }}" \
             --password-stdin
 
-      # Constrói a imagem com duas identificações.
-      # latest representa a versão mais recente.
-      # github.sha identifica exatamente o commit que gerou a imagem.
-      - name: Construir imagem para publicação
+      # Constrói a imagem da API com duas tags.
+      - name: Construir imagem da API para publicação
         run: |
           docker build \
-            --tag "${IMAGE_NAME}:latest" \
-            --tag "${IMAGE_NAME}:${{ github.sha }}" \
+            --tag "${API_IMAGE}:latest" \
+            --tag "${API_IMAGE}:${{ github.sha }}" \
             .
 
-      # Envia as duas identificações da imagem ao registro.
-      - name: Publicar imagem Docker
+      # Constrói a imagem do dashboard com duas tags.
+      - name: Construir imagem do dashboard para publicação
         run: |
-          docker push "${IMAGE_NAME}:latest"
-          docker push "${IMAGE_NAME}:${{ github.sha }}"
+          docker build \
+            --tag "${DASHBOARD_IMAGE}:latest" \
+            --tag "${DASHBOARD_IMAGE}:${{ github.sha }}" \
+            ./dashboard
+
+      # Publica as tags latest e SHA da API.
+      - name: Publicar imagem da API
+        run: |
+          docker push "${API_IMAGE}:latest"
+          docker push "${API_IMAGE}:${{ github.sha }}"
+
+      # Publica as tags latest e SHA do dashboard.
+      - name: Publicar imagem do dashboard
+        run: |
+          docker push "${DASHBOARD_IMAGE}:latest"
+          docker push "${DASHBOARD_IMAGE}:${{ github.sha }}"

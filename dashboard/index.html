@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Dashboard de Estudos</title>
+
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+
+  <body>
+    <header>
+      <h1>Registro de Estudos</h1>
+      <p>Laboratório Docker, FastAPI e PostgreSQL</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Novo estudo</h2>
+
+        <form id="study-form">
+          <label for="title">Título</label>
+          <input
+            id="title"
+            name="title"
+            type="text"
+            maxlength="120"
+            required
+          />
+
+          <label for="description">Descrição</label>
+          <textarea
+            id="description"
+            name="description"
+            rows="4"
+            required
+          ></textarea>
+
+          <button type="submit">Salvar estudo</button>
+        </form>
+
+        <p id="form-message" role="status"></p>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <h2>Estudos registrados</h2>
+          <button id="refresh-button" type="button">Atualizar</button>
+        </div>
+
+        <p id="loading-message">Carregando registros...</p>
+        <p id="empty-message" hidden>Nenhum estudo registrado.</p>
+
+        <div id="study-list"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Ambiente intermediário de Docker Compose</p>
+    </footer>
+  </body>
+</html>
