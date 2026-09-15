@@ -101,9 +101,9 @@ jobs:
         if: always()
         run: docker compose down --volumes
 
-  # Segundo trabalho: publica a imagem da API.
-  publicar-imagem:
-    name: Publicar imagem da API no GHCR
+    # Segundo trabalho: publica as imagens da API e do dashboard.
+  publicar-imagens:
+    name: Publicar imagens no GHCR
 
     # Somente começa depois que todas as validações terminarem.
     needs: validar-aplicacao
@@ -113,18 +113,19 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
-    # Endereço da imagem da API.
+    # Endereços das imagens no GitHub Container Registry.
     env:
-      IMAGE_NAME: ghcr.io/ricsanol/lab-docker-cicd
+      API_IMAGE: ghcr.io/ricsanol/lab-docker-cicd
+      DASHBOARD_IMAGE: ghcr.io/ricsanol/lab-docker-cicd-dashboard
 
     steps:
       # Baixa novamente o código para esta máquina.
       - name: Baixar código do repositório
         uses: actions/checkout@v7
 
-      # Autentica o Docker no registro do GitHub.
+      # Autentica o Docker no registro de imagens do GitHub.
       - name: Autenticar no GitHub Container Registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" |
@@ -132,16 +133,30 @@ jobs:
             --username "${{ github.actor }}" \
             --password-stdin
 
-      # Constrói a imagem com as tags latest e SHA do commit.
-      - name: Construir imagem para publicação
+      # Constrói a imagem da API com duas tags.
+      - name: Construir imagem da API para publicação
         run: |
           docker build \
-            --tag "${IMAGE_NAME}:latest" \
-            --tag "${IMAGE_NAME}:${{ github.sha }}" \
+            --tag "${API_IMAGE}:latest" \
+            --tag "${API_IMAGE}:${{ github.sha }}" \
             .
 
-      # Publica as duas tags da imagem.
-      - name: Publicar imagem Docker
+      # Constrói a imagem do dashboard com duas tags.
+      - name: Construir imagem do dashboard para publicação
         run: |
-          docker push "${IMAGE_NAME}:latest"
-          docker push "${IMAGE_NAME}:${{ github.sha }}"
+          docker build \
+            --tag "${DASHBOARD_IMAGE}:latest" \
+            --tag "${DASHBOARD_IMAGE}:${{ github.sha }}" \
+            ./dashboard
+
+      # Publica as tags latest e SHA da API.
+      - name: Publicar imagem da API
+        run: |
+          docker push "${API_IMAGE}:latest"
+          docker push "${API_IMAGE}:${{ github.sha }}"
+
+      # Publica as tags latest e SHA do dashboard.
+      - name: Publicar imagem do dashboard
+        run: |
+          docker push "${DASHBOARD_IMAGE}:latest"
+          docker push "${DASHBOARD_IMAGE}:${{ github.sha }}"
