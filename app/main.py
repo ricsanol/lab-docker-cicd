@@ -47,7 +47,7 @@ app = FastAPI(
     # Define o nome exibido na documentação automática.
     title="Laboratório Docker e CI/CD",
     # Define a versão atual da API.
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -78,7 +78,7 @@ def health() -> dict[str, str]:
 def version() -> dict[str, str]:
     # Retorna a versão atual da aplicação.
     return {
-        "version": "1.1.0",
+        "version": "1.2.0",
     }
 
 
